@@ -12,11 +12,13 @@ const Usuarios = () => {
     const [editingUserId, setEditingUserId] = useState(null);
     const [tableData, setTableData] = useState([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
-
-    // Variables de estado para los campos en el modal
+    // variables de estado para los campos en el modal
     const [modalUsername, setModalUsername] = useState("");
     const [modalPassword, setModalPassword] = useState("");
     const [modalRol, setModalRol] = useState("");
+    //estado para el modal de confirmar cuando elimina
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState(null);
 
     const apiUrlUsuarios = "http://127.0.0.1:3000/api/usuarios";
     const apiUrlRoles = "http://127.0.0.1:3000/api/roles";
@@ -67,30 +69,35 @@ const Usuarios = () => {
         }
     };
 
+   
     const guardarUsuario = async () => {
         if (!username || !password || !rol_id) {
-            Alert.alert("Error", "Todos los campos son obligatorios");
-            alert("Error", "Todos los campos son obligatorios");
+            Alert.alert("Error Todos los campos son obligatorios");
+            alert("Error Todos los campos son obligatorios");
             return;
         }
-
+    
         try {
             await axios.post(apiUrlUsuarios, { username, password, rol_id });
+            
+            const nuevoUsuario = { username, password, rol_id };
+            setUsuarios(prevUsuarios => [...prevUsuarios, nuevoUsuario]);
+    
             Alert.alert("Usuario añadido");
             alert("Usuario añadido");
             limpiarCampos();
-            verListaUsuarios();
+            verListaUsuarios(); 
         } catch (error) {
-            Alert.alert("Error", "No se pudo guardar el usuario");
-            alert("Error", "No se pudo guardar el usuario");
+            Alert.alert("Error No se pudo guardar el usuario");
+            alert("Error No se pudo guardar el usuario");
         }
     };
-
+     
     const actualizarUsuario = async () => {
         if (!editingUserId) return;
         try {
             await axios.put(`${apiUrlUsuarios}/${editingUserId}`, { username: modalUsername, password: modalPassword, rol_id: modalRol });
-            Alert.alert("Usuario actualizado");
+            Alert.alert("Usuario actualizado", "El usuario ha sido actualizado correctamente.");
             alert("Usuario actualizado");
             cerrarModal();
             verListaUsuarios();
@@ -108,16 +115,28 @@ const Usuarios = () => {
         setIsModalVisible(true);
     };
 
-    const borrarUsuario = async (id) => {
-        try {
-            await axios.delete(`${apiUrlUsuarios}/${id}`);
-            Alert.alert("Usuario eliminado");
-            alert("Usuario eliminado");
-            verListaUsuarios();
-        } catch (error) {
-            Alert.alert("Error", "No se pudo eliminar el usuario");
-            alert("Error", "No se pudo eliminar el usuario");
+    const borrarUsuario = (id) => {
+        setUserToDelete(id);
+        setShowDeleteModal(true);  // aqui abre el modal de confirmar si se elimina el usuario
+    };
+
+    const confirmarBorrado = async () => {
+        if (userToDelete) {
+            try {
+                await axios.delete(`${apiUrlUsuarios}/${userToDelete}`);
+                Alert.alert("Usuario eliminado", "El usuario ha sido eliminado correctamente.");
+                alert("Usuario eliminado");
+                verListaUsuarios();
+            } catch (error) {
+                Alert.alert("Error", "No se pudo eliminar el usuario");
+                alert("Error", "No se pudo eliminar el usuario");
+            }
         }
+        setShowDeleteModal(false);  // cierra el modal
+    };
+
+    const cancelarBorrado = () => {
+        setShowDeleteModal(false);  // cierra el modal
     };
 
     const limpiarCampos = () => {
@@ -135,7 +154,7 @@ const Usuarios = () => {
     };
 
     return (
-        <ScrollView>
+        <ScrollView style={{ flex: 1, backgroundColor: '#FFF8E1' }}>
             <View style={styles.container}>
                 <Text style={styles.header}>Gestión de Usuarios</Text>
 
@@ -153,7 +172,7 @@ const Usuarios = () => {
                     secureTextEntry={true}
                 />
 
-                {/* Selector de rol */}
+                {/* selector de rol */}
                 <Picker
                     selectedValue={rol_id}
                     style={styles.input}
@@ -164,13 +183,13 @@ const Usuarios = () => {
                         <Picker.Item key={rol.id} label={rol.nombre} value={rol.id} />
                     ))}
                 </Picker>
-                
-                <Button 
+
+                <Button
                     title="Añadir Usuario"
-                    onPress={guardarUsuario} 
+                    onPress={guardarUsuario}
                 />
 
-                <Table borderStyle={{ borderWidth: 1, borderColor: '#abb2b9' }} style={styles.table}> 
+                <Table borderStyle={{ borderWidth: 1, borderColor: '#abb2b9' }} style={styles.table}>
                     <Row
                         data={["Username", "Contraseña", "Rol", "Editar", "Borrar"]}
                         style={styles.head}
@@ -182,7 +201,7 @@ const Usuarios = () => {
                     />
                 </Table>
 
-                {/* Modal para edición */}
+                {/* modal para edicion */}
                 <Modal
                     visible={isModalVisible}
                     transparent={true}
@@ -205,7 +224,7 @@ const Usuarios = () => {
                                 secureTextEntry={true}
                             />
 
-                            {/* Selector de rol en el modal */}
+                            {/* selector de rol en el modal */}
                             <Picker
                                 selectedValue={modalRol}
                                 style={styles.input}
@@ -216,14 +235,37 @@ const Usuarios = () => {
                                     <Picker.Item key={rol.id} label={rol.nombre} value={rol.id} />
                                 ))}
                             </Picker>
-
+                            <View style={styles.modalButtons2}>
                             <Button title="Guardar Cambios" onPress={actualizarUsuario} />
                             <TouchableOpacity onPress={cerrarModal} style={styles.closeButton}>
                                 <Text style={styles.closeButtonText}>Cerrar</Text>
                             </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </Modal>
+
+                {/* modal para confirmar que elimina al usuario */}
+                {showDeleteModal && (
+                    <Modal
+                        transparent={true}
+                        visible={showDeleteModal}
+                        animationType="fade"
+                    >
+                        <View style={styles.modalOverlay}>
+                            <View style={styles.modalContent}>
+                                <Text style={styles.modalTitle}>CONFIRMACIÓN DE ELIMINACIÓN</Text>
+                                <Text style={styles.modalMessage}>
+                                    ¿Estás seguro de que deseas eliminar este usuario?
+                                </Text>
+                                <View style={styles.modalButtons}>
+                                    <Button title="Cancelar" onPress={cancelarBorrado} />
+                                    <Button title="Eliminar" color="red" onPress={confirmarBorrado} />
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
+                )}
             </View>
         </ScrollView>
     );
@@ -235,7 +277,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start',
         marginTop: "5%",
-        backgroundColor: '#FFF8E1', // Fondo claro amarillo suave
+        backgroundColor: '#FFF8E1',  // Fondo claro amarillo suave
     },
     input: {
         backgroundColor: "#FAFAFA",
@@ -250,7 +292,7 @@ const styles = StyleSheet.create({
     table: {
         width: '90%',
         marginTop: 20,
-        backgroundColor: '#FFFFFF', // Fondo blanco en tabla para contraste
+        backgroundColor: '#FFFFFF',  // Fondo blanco en tabla para contraste
         borderRadius: 5,
         overflow: 'hidden',
     },
@@ -273,11 +315,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     header: {
-        fontSize: 30,
+        fontSize: 24,
         fontWeight: 'bold',
-        textAlign: 'center',
-        color: '#333',
-        marginBottom: 40,
+        color: '#2E3A59',
+        marginBottom: 20,
     },
     modalContainer: {
         flex: 1,
@@ -286,30 +327,49 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
-        width: '80%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 10,
+        backgroundColor: '#FFF',
         padding: 20,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 5,
+        borderRadius: 10,
+        width: '80%',
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 20,
-        color: '#007bff',
+        marginBottom: 10,
     },
     closeButton: {
         marginTop: 20,
+        backgroundColor: '#FF6347',
+        padding: 10,
+        borderRadius: 5,
     },
     closeButtonText: {
-        color: 'blue',
+        color: '#FFF',
         fontSize: 16,
     },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    modalMessage: {
+        fontSize: 16,
+        marginBottom: 20,
+    },
+    modalButtons2: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 3,
+    },
+
 });
 
 export default Usuarios;
